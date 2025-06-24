@@ -167,6 +167,7 @@ def get_sub_dependant(
         name=name,
         security_scopes=security_scopes,
         use_cache=depends.use_cache,
+        parallelizable=depends.parallelizable,
     )
     if security_requirement:
         sub_dependant.security_requirements.append(security_requirement)
@@ -194,6 +195,7 @@ def get_flat_dependant(
         body_params=dependant.body_params.copy(),
         security_requirements=dependant.security_requirements.copy(),
         use_cache=dependant.use_cache,
+        parallelizable=dependant.parallelizable,
         path=dependant.path,
     )
     for sub_dependant in dependant.dependencies:
@@ -271,6 +273,7 @@ def get_dependant(
     name: Optional[str] = None,
     security_scopes: Optional[List[str]] = None,
     use_cache: bool = True,
+    parallelizable: bool = True,
 ) -> Dependant:
     path_param_names = get_path_param_names(path)
     endpoint_signature = get_typed_signature(call)
@@ -281,6 +284,7 @@ def get_dependant(
         path=path,
         security_scopes=security_scopes,
         use_cache=use_cache,
+        parallelizable=parallelizable,
     )
     for param_name, param in signature_params.items():
         is_path_param = param_name in path_param_names
@@ -578,8 +582,9 @@ class DependencySolveException(Exception):
 
 
 def is_context_sensitive(dependant: Dependant) -> bool:
-    if dependant.call is not None and (
-        is_gen_callable(dependant.call) or is_async_gen_callable(dependant.call)
+    if dependant.parallelizable is False or (
+        dependant.call is not None
+        and (is_gen_callable(dependant.call) or is_async_gen_callable(dependant.call))
     ):
         return True
     return any(is_context_sensitive(sub) for sub in dependant.dependencies)
